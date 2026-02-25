@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { 
   LayoutDashboard, Users, Layers, Wallet, Settings, 
-  LogOut, Moon, Sun, Menu 
-} from 'lucide-react';
+  LogOut, Moon, Sun, Menu, ClipboardCheck 
+} from 'lucide-react'; // 🔥 ClipboardCheck qo'shildi
 
 export const Sidebar = () => {
   const { logout, theme, toggleTheme } = useData();
@@ -14,6 +14,8 @@ export const Sidebar = () => {
     { path: '/dashboard', name: 'Boshqaruv', icon: LayoutDashboard },
     { path: '/students', name: "O'quvchilar", icon: Users },
     { path: '/groups', name: 'Guruhlar', icon: Layers },
+    // 🔥 YAngi bo'lim shu yerga qo'shildi
+    { path: '/attendance', name: 'Davomat', icon: ClipboardCheck },
     { path: '/payments', name: "To'lovlar", icon: Wallet },
     { path: '/settings', name: 'Sozlamalar', icon: Settings },
   ];

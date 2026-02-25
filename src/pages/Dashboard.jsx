@@ -2,27 +2,28 @@ import React, { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
 import { 
   TrendingUp, TrendingDown, Wallet, 
-  BarChart3, Users, Layers, AlertCircle, 
-  Phone, ArrowUpRight, ArrowDownRight, Calendar 
+  BarChart3, Users, AlertCircle, 
+  Phone, Calendar 
 } from 'lucide-react';
 
 export const Dashboard = () => {
   const { db, theme } = useData();
   const isDark = theme === 'dark';
 
+  // --- XAVFSIZLIK: Ma'lumot yuklanmaguncha kutamiz ---
+  if (!db) return <div className="p-10 text-center font-bold text-slate-500">Yuklanmoqda...</div>;
+
   // 1. MA'LUMOTLARNI OLISH
-  const students = db?.students || [];
-  const groups = db?.groups || [];
-  const payments = db?.payments || [];
-  const expenses = db?.expenses || [];
+  const students = db.students || [];
+  const groups = db.groups || [];
+  const payments = db.payments || [];
+  const expenses = db.expenses || [];
 
   // --- 2. OY VA YILNI TANLASH ---
   const today = new Date();
-  // Default holatda hozirgi oy va yil turadi
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  // Oylar ro'yxati (O'zbekcha)
   const months = [
     { value: 1, label: "Yanvar" },
     { value: 2, label: "Fevral" },
@@ -38,16 +39,18 @@ export const Dashboard = () => {
     { value: 12, label: "Dekabr" },
   ];
 
+  // Joriy oyni xavfsiz aniqlash
+  const currentMonthIndex = parseInt(selectedMonth) - 1;
+  const currentMonthName = months[currentMonthIndex >= 0 && currentMonthIndex <= 11 ? currentMonthIndex : 0].label;
+
   // --- 3. FILTRLASH LOGIKASI ---
-  
-  // Tanlangan oy va yilga mos keladigan ma'lumotlarni saralab olamiz
   const filterByDate = (items) => {
     return items.filter(item => {
-       // Bazada sana "DD.MM.YYYY" formatida saqlangan (masalan: 15.02.2024)
        if (!item.date) return false;
-       const parts = item.date.split('.'); // ['15', '02', '2024']
-       const itemMonth = parseInt(parts[1]); // 2
-       const itemYear = parseInt(parts[2]);  // 2024
+       const parts = item.date.split('.'); 
+       if (parts.length !== 3) return false;
+       const itemMonth = parseInt(parts[1]); 
+       const itemYear = parseInt(parts[2]);  
 
        return itemMonth === parseInt(selectedMonth) && itemYear === parseInt(selectedYear);
     });
@@ -56,23 +59,17 @@ export const Dashboard = () => {
   const monthlyPayments = filterByDate(payments);
   const monthlyExpenses = filterByDate(expenses);
 
-  // --- 4. HISOB-KITOB (Faqat tanlangan oy uchun) ---
-  
-  // Jami Kirim (Tanlangan oy)
+  // --- 4. HISOB-KITOB ---
   const totalIncome = monthlyPayments.reduce((acc, cur) => acc + Number(cur.amount || 0), 0);
-  
-  // Jami Chiqim (Tanlangan oy)
   const totalExpense = monthlyExpenses.reduce((acc, cur) => acc + Number(cur.amount || 0), 0);
-  
-  // Sof Foyda (Tanlangan oy)
   const netProfit = totalIncome - totalExpense;
 
-  // QARZDORLAR (Bu oydagi to'lov qilmaganlar)
   const debtors = useMemo(() => {
     return students.filter(student => {
-      // Shu oyda to'lov qilganmi?
       const hasPaid = payments.some(p => {
+        if (!p.date) return false;
         const parts = p.date.split('.');
+        if (parts.length !== 3) return false;
         return p.studentId === student.id && 
                Number(parts[1]) === parseInt(selectedMonth) && 
                Number(parts[2]) === parseInt(selectedYear);
@@ -81,19 +78,27 @@ export const Dashboard = () => {
     });
   }, [students, payments, selectedMonth, selectedYear]);
 
-  // GRAFIK UCHUN DATA (Yillik dinamika)
   const chartData = useMemo(() => {
       const data = months.map(m => ({ label: m.label.slice(0, 3), income: 0 }));
       payments.forEach(p => {
-        const [d, m, y] = p.date.split('.');
+        if (!p.date) return;
+        const parts = p.date.split('.');
+        if (parts.length !== 3) return;
+        const [d, m, y] = parts;
         if (Number(y) === parseInt(selectedYear)) {
-            data[Number(m) - 1].income += Number(p.amount);
+            data[Number(m) - 1].income += Number(p.amount || 0);
         }
       });
       const maxVal = Math.max(...data.map(d => d.income)) || 1;
       return { data, maxVal };
   }, [payments, selectedYear]);
 
+  // 🔥 FAQAT 3 TA MOLIYAVIY KARTA QOLDI
+  const cards = [
+    { title: `Tushum (${currentMonthName})`, value: `+${totalIncome.toLocaleString()} UZS`, icon: TrendingUp, color: "bg-emerald-500", sub: "Kassaga kirgan pul" },
+    { title: `Xarajatlar (${currentMonthName})`, value: `-${totalExpense.toLocaleString()} UZS`, icon: TrendingDown, color: "bg-rose-500", sub: "Markazdan chiqib ketgan" },
+    { title: `Sof Foyda (${currentMonthName})`, value: `${netProfit > 0 ? '+' : ''}${netProfit.toLocaleString()} UZS`, icon: Wallet, color: netProfit >= 0 ? "bg-indigo-500" : "bg-rose-500", sub: "Yonga qolgan pul" },
+  ];
 
   return (
     <div className="pb-20 animate-in fade-in duration-500">
@@ -103,13 +108,12 @@ export const Dashboard = () => {
         <div>
           <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>Boshqaruv Paneli</h1>
           <p className="text-slate-500 font-medium flex items-center gap-2 mt-1">
-             <Calendar size={16}/> {months[selectedMonth-1].label}, {selectedYear} holatiga ko'ra
+             <Calendar size={16}/> Hozirgi oy: <span className="font-bold text-blue-500">{currentMonthName}</span>
           </p>
         </div>
         
         {/* OY VA YIL TANLASH MENYUSI */}
         <div className="flex gap-3">
-            {/* Oylar */}
             <select 
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
@@ -119,8 +123,6 @@ export const Dashboard = () => {
                     <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
             </select>
-
-            {/* Yillar (2024 dan 2030 gacha) */}
             <select 
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
@@ -133,47 +135,35 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* --- MOLIYA KARTALARI (DYNAMIC) --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-        
-        {/* 1. Oylik Kirim */}
-        <div className="bg-gradient-to-br from-blue-700 to-teal-800 text-white p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-blue-900/20 group hover:-translate-y-1 transition-all">
-          <TrendingUp className="absolute top-4 right-4 opacity-30" size={60}/>
-          <div className="relative z-10">
-              <p className="text-xs font-bold opacity-80 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ArrowUpRight size={14}/> {months[selectedMonth-1].label} oyidagi Kirim
+      {/* --- MOLIYA KARTALARI (Endi 3 ta qatorli grid-cols-3 bo'ldi) --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {cards.map((card, index) => {
+          const IconComponent = card.icon; 
+          return (
+            <div key={index} className={`p-6 rounded-2xl relative overflow-hidden group hover:shadow-lg transition-all border ${isDark ? 'bg-[#161d31] border-white/5 shadow-none' : 'bg-white border-slate-200 shadow-sm'}`}>
+              
+              <div className={`absolute right-0 top-0 w-24 h-24 rounded-bl-full -mr-4 -mt-4 transition group-hover:scale-110 ${isDark ? 'bg-gradient-to-br from-white/5 to-transparent' : 'bg-gradient-to-br from-slate-100 to-transparent'}`}></div>
+              
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className={`p-3 rounded-xl text-white shadow-lg ${card.color}`}>
+                  <IconComponent size={24} />
+                </div>
+              </div>
+              
+              <p className={`text-sm font-medium relative z-10 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {card.title}
               </p>
-              <h2 className="text-3xl font-black tracking-tight">
-                 {totalIncome === 0 ? "0" : `+${totalIncome.toLocaleString()}`}
-              </h2>
-          </div>
-        </div>
-
-        {/* 2. Oylik Chiqim */}
-        <div className="bg-gradient-to-br from-indigo-800 to-blue-900 text-white p-6 rounded-2xl relative overflow-hidden shadow-lg shadow-indigo-900/20 group hover:-translate-y-1 transition-all">
-          <TrendingDown className="absolute top-4 right-4 opacity-30" size={60}/>
-          <div className="relative z-10">
-              <p className="text-xs font-bold opacity-80 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ArrowDownRight size={14}/> {months[selectedMonth-1].label} oyidagi Chiqim
+              
+              <h3 className={`text-xl lg:text-2xl font-black mt-1 truncate relative z-10 ${isDark ? 'text-white' : 'text-slate-900'}`} title={card.value.toString()}>
+                {card.value}
+              </h3>
+              
+              <p className="text-xs text-slate-400 mt-2 relative z-10">
+                {card.sub}
               </p>
-              <h2 className="text-3xl font-black tracking-tight">
-                 {totalExpense === 0 ? "0" : `-${totalExpense.toLocaleString()}`}
-              </h2>
-          </div>
-        </div>
-
-        {/* 3. Oylik Sof Foyda */}
-        <div className={`p-6 rounded-2xl relative overflow-hidden shadow-lg group hover:-translate-y-1 transition-all text-white
-             ${netProfit >= 0 ? 'bg-gradient-to-br from-emerald-600 to-green-700 shadow-emerald-900/20' : 'bg-gradient-to-br from-rose-600 to-red-700 shadow-rose-900/20'}`}>
-          <Wallet className="absolute top-4 right-4 opacity-30" size={60}/>
-          <div className="relative z-10">
-              <p className="text-xs font-bold opacity-80 uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Wallet size={14}/> {months[selectedMonth-1].label} oyidagi Foyda
-              </p>
-              <h2 className="text-3xl font-black tracking-tight">{netProfit.toLocaleString()}</h2>
-          </div>
-        </div>
-
+            </div>
+          )
+        })}
       </div>
 
       {/* --- YILLIK GRAFIK --- */}
@@ -206,7 +196,6 @@ export const Dashboard = () => {
       {/* --- STATISTIKA VA QARZDORLAR --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Kichik Statistikalar */}
         <div className="space-y-4">
           <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-[#161d31] border-white/5' : 'bg-white border-slate-200'}`}>
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-800 font-bold"><Users size={24} /></div>
@@ -218,18 +207,17 @@ export const Dashboard = () => {
           <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-[#161d31] border-white/5' : 'bg-white border-slate-200'}`}>
             <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 font-bold"><AlertCircle size={24} /></div>
             <div>
-              <p className="text-slate-400 font-bold text-[10px] uppercase">{months[selectedMonth-1].label} uchun qarzdorlar</p>
+              <p className="text-slate-400 font-bold text-[10px] uppercase">{currentMonthName} uchun qarzdorlar</p>
               <h3 className="text-2xl font-black text-rose-600">{debtors.length}</h3>
             </div>
           </div>
         </div>
 
-        {/* Qarzdorlar Jadvali */}
         <div className={`lg:col-span-2 p-6 rounded-3xl border ${isDark ? 'bg-[#161d31] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-lg font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
               <span className="w-2 h-6 bg-rose-500 rounded-full"></span>
-              To'lov Kutilmoqda ({months[selectedMonth-1].label})
+              To'lov Kutilmoqda ({currentMonthName})
             </h3>
             <span className="px-2 py-1 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold">{debtors.length} kishi</span>
           </div>

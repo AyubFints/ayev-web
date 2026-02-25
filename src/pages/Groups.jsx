@@ -18,6 +18,7 @@ export const Groups = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
 
+  // 🔥 O'ZGARISH: `days` state boshlang'ich qiymati bo'sh emas, "Dushanba" bo'lib turishi mumkin, lekin foydalanuvchi majburiy tanlashi uchun bo'sh qoldiramiz.
   const [formData, setFormData] = useState({
     name: '', teacher: '', price: '', days: '', time: '', teacherPercent: ''
   });
@@ -39,6 +40,9 @@ export const Groups = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name) return alert("Nom majburiy!");
+    // 🔥 O'ZGARISH: Kun tanlanmagan bo'lsa xato berish
+    if (!formData.days) return alert("Iltimos, dars kunlarini tanlang!"); 
+
     addGroup(formData);
     setIsModalOpen(false);
     setFormData({ name: '', teacher: '', price: '', days: '', time: '', teacherPercent: '' });
@@ -47,6 +51,7 @@ export const Groups = () => {
   return (
     <div className={`p-4 md:p-10 min-h-screen pb-24 transition-all duration-300 animate-in fade-in ${isDark ? 'bg-[#0b1120] text-white' : 'bg-slate-50 text-slate-900'}`}>
       
+      {/* --- HEADER VA QIDIRUV QISMI (O'ZGARISHSZ) --- */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
@@ -74,6 +79,7 @@ export const Groups = () => {
         </div>
       </div>
 
+      {/* --- GURUHLAR RO'YXATI KARTALARI (O'ZGARISHSZ) --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredGroups.length > 0 ? filteredGroups.map((group) => {
           const stats = getGroupStats(group.id);
@@ -81,7 +87,6 @@ export const Groups = () => {
           return (
             <div 
               key={group.id} 
-              // --- 🔥 MANA SHU YER O'ZGARTIRILDI (Navigatsiya yoqildi) ---
               onClick={() => navigate(`/groups/${group.id}`)}
               className={`group relative p-6 rounded-[32px] border transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl cursor-pointer overflow-hidden ${isDark ? 'bg-[#161d31] border-white/5 shadow-black/50 hover:border-cyan-500/30' : 'bg-white border-slate-200 shadow-slate-200 hover:border-cyan-200'}`}
             >
@@ -150,6 +155,7 @@ export const Groups = () => {
         )}
       </div>
 
+      {/* --- MODAL: GURUH QO'SHISH (🔥 O'ZGARISHLAR SHU YERDA) --- */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
            <div className={`w-full max-w-lg p-8 rounded-[32px] border shadow-2xl scale-100 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto ${isDark ? 'bg-[#161d31] border-white/10' : 'bg-white'}`}>
@@ -175,6 +181,7 @@ export const Groups = () => {
                    </div>
                  </div>
                  
+                 {/* 🔥 O'ZGARISH: Vaqt kiritish joyi aniqroq qilindi */}
                  <div className="flex gap-4">
                     <div className="w-1/2 space-y-1">
                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Narx (UZS)</label>
@@ -182,13 +189,23 @@ export const Groups = () => {
                     </div>
                     <div className="w-1/2 space-y-1">
                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Vaqt</label>
-                       <input placeholder="14:00" className={`w-full p-4 rounded-2xl outline-none border transition-all focus:border-cyan-500 ${isDark ? 'bg-[#0b1120] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`} value={formData.time} onChange={e=>setFormData({...formData, time: e.target.value})} />
+                       <input placeholder="08:00 - 10:00" className={`w-full p-4 rounded-2xl outline-none border transition-all focus:border-cyan-500 ${isDark ? 'bg-[#0b1120] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`} value={formData.time} onChange={e=>setFormData({...formData, time: e.target.value})} required/>
                     </div>
                  </div>
 
+                 {/* 🔥 O'ZGARISH: Kunlar Input o'rniga Select qo'yildi */}
                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase ml-1">Kunlar</label>
-                    <input placeholder="Dush / Chor / Juma" className={`w-full p-4 rounded-2xl outline-none border transition-all focus:border-cyan-500 ${isDark ? 'bg-[#0b1120] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`} value={formData.days} onChange={e=>setFormData({...formData, days: e.target.value})} />
+                    <select 
+                      className={`w-full p-4 rounded-2xl outline-none border cursor-pointer transition-all focus:border-cyan-500 ${isDark ? 'bg-[#0b1120] border-white/5 text-white' : 'bg-slate-50 border-slate-200'}`} 
+                      value={formData.days} 
+                      onChange={e=>setFormData({...formData, days: e.target.value})} 
+                      required
+                    >
+                      <option value="" disabled>Kunni tanlang...</option>
+                      <option value="Dushanba">Dushanba (Dush, Chor, Juma)</option>
+                      <option value="Seshanba">Seshanba (Sesh, Pay, Shanba)</option>
+                    </select>
                  </div>
 
                  <div className="flex gap-3 mt-6">
